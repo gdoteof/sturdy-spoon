@@ -1,8 +1,7 @@
-import { getBtcAddressFromKeyObj, getThorchainAddressFromKeyObj } from "@/app/swap/utils/chainHelpers";
-import { getBtcBalance, getThorBalance } from "@/lib/thor_slice";
-import KeystoneSDK, { UR } from "@keystonehq/keystone-sdk";
+
+import { btcAPI } from "@/lib/btc_slice";
+import { AddressWithBalance, KeystoneAccount, keystoneApi, KeystoneMultiAccount } from "@/lib/keystone_api";
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
-import { createApi, fakeBaseQuery } from "@reduxjs/toolkit/query/react";
 
 export enum WalletType {
     KEYSTONE = "KEYSTONE",
@@ -39,30 +38,7 @@ export interface WalletState {
     scanProgress: number;
     keystoneMultiAccounts: Record<string, KeystoneMultiAccount>;
 }
-import { Account, MultiAccounts } from "@keystonehq/keystone-sdk";
 
-export interface AddressInfo {
-    address: string;
-    index: number;
-    balance: number;
-    derivedAddresses: AddressWithBalance[];
-}
-
-export interface ScanResult {
-    type: string;
-    cbor: string;
-}
-
-interface AddressWithBalance {
-    address: string;
-    balance: number;
-    index: number;
-}
-export type KeystoneAccount = Account & AddressInfo;
-
-export type KeystoneMultiAccount = Omit<MultiAccounts, "keys"> & {
-    keys: KeystoneAccount[];
-};
 
 export interface Wallet {
     walletType: WalletType;
@@ -79,58 +55,6 @@ const initialState: WalletState = {
     scanProgress: 0,
     keystoneMultiAccounts: {},
 };
-
-export const keystoneApi = createApi({
-    reducerPath: 'walletApi',
-    baseQuery: fakeBaseQuery(),
-    endpoints: (builder) => ({
-        processKeystoneScan: builder.mutation<KeystoneMultiAccount, ScanResult>({
-            queryFn: async ({ type, cbor }) => {
-                try {
-                    const sdk = new KeystoneSDK();
-                    const ur = new UR(Buffer.from(cbor, 'hex'), type);
-                    const accounts = sdk.parseMultiAccounts(ur);
-                    const keystoneAccountPromises = accounts.keys.map(async (account, accountIndex) => {
-                        if (account.chain === 'RUNE') {
-                            const derivedAddresses: AddressWithBalance[] = [];
-                            let balance = 0;
-                            for (let i = 0; i < 5; i++) {
-                                const address = getThorchainAddressFromKeyObj(account, i);
-                                const thisBalance = await getThorBalance(address);
-                                balance += thisBalance;
-                                derivedAddresses.push({ address, balance: thisBalance, index: i });
-                            }
-                            return { ...account, derivedAddresses, balance, index: accountIndex } as KeystoneAccount;
-                        }
-                        else if (account.chain === 'BTC') {
-                            const derivedAddresses: AddressWithBalance[] = [];
-                            let balance = 0;
-                            for (let i = 0; i < 5; i++) {
-                                const address = getBtcAddressFromKeyObj(account, i);
-                                const thisBalance = await getBtcBalance(address);
-                                balance += thisBalance;
-                                derivedAddresses.push({ address, balance: thisBalance, index: i });
-                            }
-                            return { ...account, derivedAddresses, balance };
-                        }
-                        else {
-                            console.log('Unsupported chain:', account.chain);
-                        }
-                        return { ...account, balance: 0, derivedAddresses: [] };
-                    }
-                    );
-                    const keystoneAccounts = await Promise.all(keystoneAccountPromises);
-                    const keystoneMultiAccounts = { ...accounts, keys: keystoneAccounts };
-
-                    return { data: keystoneMultiAccounts as KeystoneMultiAccount };
-                } catch (error) {
-                    return { error: { status: 'CUSTOM_ERROR', error: 'Failed to process Keystone scan', data: { message: 'Failed to process Keystone scan' } } };
-                }
-            },
-
-        })
-    })
-});
 
 
 export const walletSlice = createSlice({
@@ -164,6 +88,20 @@ export const walletSlice = createSlice({
         setScanProgress: (state, action: PayloadAction<number>) => {
             state.scanProgress = action.payload;
         },
+        setBalanceForAddress: (state, action: PayloadAction<{ address: string, balance: number }>) => {
+            const activeWallet = state.wallets[state.activeWallet ?? ""];
+            if (!activeWallet) {
+                return;
+            }
+            const coinAccounts = activeWallet.coinAccounts;
+            coinAccounts.forEach((account) => {
+                const address = account.derivedAddresses.find((address) => address.address === action.payload.address);
+                if (address) {
+                    address.balance = action.payload.balance;
+                    return;
+                }
+            });
+        }
     },
     extraReducers: (builder) => {
         builder.addMatcher(keystoneApi.endpoints.processKeystoneScan.matchFulfilled, (state, action) => {
@@ -190,6 +128,31 @@ export const walletSlice = createSlice({
             state.keystoneMultiAccounts[action.payload.masterFingerprint] = action.payload;
             return state;
         });
+        builder.addMatcher(btcAPI.endpoints.checkBalance.matchFulfilled, (state, action) => {
+            const balance = action.payload;
+            const originalAddress = action.meta.arg.originalArgs;
+            console.log(`Balance for address ${originalAddress} is ${action.payload}`);
+            const activeWallet = state.wallets[state.activeWallet ?? ""];
+            if (!activeWallet) {
+                return;
+            }
+            const coinAccounts = activeWallet.coinAccounts;
+            console.log(`Original Address: ${originalAddress}`);
+            console.log(`Number of coin accounts: ${coinAccounts.length}`);
+            coinAccounts.forEach((account, accountIndex) => {
+                console.log(`Account: ${account.chain}`);
+                console.log(`Number of addresses: ${account.derivedAddresses.length}`);
+                const addressIndex = account.derivedAddresses.findIndex((address) => address.address === originalAddress);
+                if (addressIndex !== -1) {
+                    console.log(`Setting balance for address ${originalAddress} to ${balance}, inside BTC slice`);
+                    console.log(state.wallets[state.activeWallet ?? ""].coinAccounts[accountIndex].derivedAddresses[addressIndex]);
+                    state.wallets[state.activeWallet ?? ""].coinAccounts[accountIndex].derivedAddresses[addressIndex].balance = balance;
+                    return state;
+                }
+            });
+            return state;
+        }
+        );
     },
 
     selectors: {

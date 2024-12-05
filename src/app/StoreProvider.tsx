@@ -16,13 +16,11 @@ export default function StoreProvider({
     storeRef.current = makeStore()
   }
 
-  const persistorRef = useRef<Persistor>()
-  if (!persistorRef.current) {
-    persistorRef.current = persistStore(storeRef.current)
-  }
-
   return <Provider store={storeRef.current}>
-    <PersistGate persistor={persistorRef.current}>
+    <PersistGate persistor={
+      // @ts-ignore
+      storeRef.current.__persistor
+    }>
       {children}
     </PersistGate>
   </Provider>

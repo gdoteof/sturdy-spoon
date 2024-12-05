@@ -15,6 +15,7 @@ import axios from 'axios'
 import { register9Rheader, assetFromStringEx } from '@xchainjs/xchain-util'
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Client } from "@xchainjs/xchain-thorchain";
+import { walletSlice } from '@/lib/wallet_slice';
 
 register9Rheader(axios)
 register9Rheader(cosmosclient.config.globalAxios)
@@ -43,6 +44,7 @@ export const getBtcBalance = async (address: string): Promise<number> => {
 
         // Extract balance in satoshis
         const balanceInSatoshis = response.data[address]?.final_balance;
+        console.log(`Address: ${address}, Balance: ${balanceInSatoshis}`);
 
         if (balanceInSatoshis === undefined) {
             throw new Error("Invalid address or no data available.");
@@ -111,7 +113,18 @@ export const thorApi = createApi({
             },
         }),
     }),
-})
+}).enhanceEndpoints({
+    endpoints: {
+        checkBalance: {
+            onCacheEntryAdded: async (address: string, api) => {
+                const { data } = await api.cacheDataLoaded;
+                const balance = data;
+                api.dispatch(walletSlice.actions.setBalanceForAddress({ address, balance }));
+            }
+        },
+
+    }
+});
 
 type ThorAddress = string
 

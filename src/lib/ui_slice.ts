@@ -13,6 +13,7 @@ interface UIState {
         isPause: boolean | null;
         liquidity: [number, number];
     };
+    serverStoreBootstrapped: boolean;
 }
 
 const initialState: UIState = {
@@ -25,7 +26,8 @@ const initialState: UIState = {
         feeRate: [0, 0],
         isPause: null,
         liquidity: [0, 0],
-    }
+    },
+    serverStoreBootstrapped: false,
 };
 
 
@@ -51,10 +53,14 @@ export const uiSlice = createSlice({
         setNameFilter(state, action) {
             state.filters.name = action.payload;
         },
+        setServerBootstrapped(state) {
+            state.serverStoreBootstrapped = true;
+        }
     },
     selectors: {
         getTheme: (state: UIState) => state.theme,
         getMenuOpen: (state: UIState) => state.menuOpen,
         getFilters: (state: UIState) => state.filters,
+        getServerStoreBootstrapped: (state: UIState) => state.serverStoreBootstrapped,
     }
 });

@@ -1,10 +1,11 @@
 'use client';
-import { keystoneApi, walletSlice } from "@/lib/wallet_slice";
+import { walletSlice } from "@/lib/wallet_slice";
 import { URType } from "@keystonehq/keystone-sdk";
 import { AppShell, Button, Group, Stack } from "@mantine/core";
 import { AnimatedQRScanner } from "@keystonehq/animated-qr"
 import { Text } from "@mantine/core";
 import { useDispatch, useSelector } from "react-redux";
+import { keystoneApi } from "@/lib/keystone_api";
 
 
 export const ThorScanner = () => {

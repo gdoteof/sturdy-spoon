@@ -7,6 +7,7 @@ import { thorApi, thorSlice } from '@/lib/thor_slice';
 import { ActionIcon, ActionIconGroup, Box, CheckIcon, Divider, List, Space, Table, Text, Title } from '@mantine/core';
 import { PoolDetail } from '@xchainjs/xchain-midgard';
 import { LiquidityPosition } from '@xchainjs/xchain-thorchain-query'; import { connect, useSelector } from 'react-redux';
+import { uiSlice } from '@/lib/ui_slice';
 interface SwapPageProps {
   wallet: Wallet | null;
   scanProgress: number;
@@ -30,7 +31,7 @@ const mapStateToProps = (state: RootState): SwapPageProps => ({
 });
 function PageRaw(props: SwapPageProps) {
   const { wallet } = props;
-  const pools = [] as PoolDetail[];
+  const serverBootstrapped = useSelector(uiSlice.selectors.getServerStoreBootstrapped);
     return (
       <Box>
         <Text>Scan Progress {props.scanProgress}</Text>
@@ -59,52 +60,9 @@ function PageRaw(props: SwapPageProps) {
           <Box>
             <Title>Wallet {wallet.masterFingerprint}</Title>
             <Text>Wallet Type: {wallet.walletType}</Text>
-            {wallet.coinAccounts.map((coinAccount, index) => (
-              <Box key={index}>
-                <Title>{coinAccount.chain}</Title>
-                <AddressTable coinAccount={coinAccount} />
-                <Divider />
-                <Title>Pools</Title>
-                <Box key={index}>
-                  <Table>
-                    <Table.Thead>
-                      <Table.Tr>
-                        <Table.Th>Asset</Table.Th>
-                        <Table.Th>Asset Depth</Table.Th>
-                        <Table.Th>Rune Depth</Table.Th>
-                        <Table.Th>APR</Table.Th>
-                        <Table.Th>Asset Price</Table.Th>
-                        <Table.Th>Asset Price USD</Table.Th>
-                        <Table.Th>Actions</Table.Th>
-                      </Table.Tr>
-                    </Table.Thead>
-                    <Table.Tbody>
-                      {pools.map((pool, index) => (
-                        <Table.Tr key={index}>
-                          <Table.Td>{pool.asset.split('-')[0]}</Table.Td>
-                          <Table.Td>{pool.assetDepth}</Table.Td>
-                          <Table.Td>{pool.runeDepth}</Table.Td>
-                          <Table.Td>{(parseFloat(pool.annualPercentageRate) * 100).toFixed(0)}%</Table.Td>
-                          <Table.Td>{parseFloat(pool.assetPrice).toFixed(2)}</Table.Td>
-                          <Table.Td>{parseFloat(pool.assetPriceUSD).toFixed(2)}</Table.Td>
-                          <Table.Td>
-                            <ActionIconGroup>
-                              <ActionIcon>
-                                <CheckIcon />
-                              </ActionIcon>
-                            </ActionIconGroup>
-                          </Table.Td>
-                        </Table.Tr>
-
-                      ))}
-                    </Table.Tbody>
-                  </Table>
-                </Box>
-              </Box>
-            ))}
           </Box>
         )}
-        {props.liquidityPositions.map((position, index) => (
+        {serverBootstrapped && props.liquidityPositions.map((position, index) => (
           <Box key={index}>
             <Table>
               <Table.Thead>

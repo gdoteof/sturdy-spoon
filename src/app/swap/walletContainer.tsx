@@ -21,7 +21,7 @@ const WalletContainer = () => {
                 wallet.coinAccounts.map((coinAccount, index) => (
                     <Box key={index} >
                         <Title>{coinAccount.chain} <Chip>{coinAccount.derivationPath}</Chip></Title>
-                        <AddressTable coinAccount={coinAccount} />
+                        <AddressTable coinAccount={coinAccount}/>
                         <Divider />
                         <Title> Pools </Title>
                         <Box key={index}>
