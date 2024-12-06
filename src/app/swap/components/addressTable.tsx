@@ -1,5 +1,5 @@
 'use client';
-import { btcAPI } from '@/lib/btc_slice';
+import { btcAPI, CheckBalanceParams, CheckBalanceResponse } from '@/lib/btc_slice';
 import { AddressWithBalance } from '@/lib/keystone_api';
 import { thorApi } from '@/lib/thor_slice';
 import { CoinAccount } from '@/lib/wallet_slice';
@@ -9,6 +9,7 @@ import { useDispatch } from 'react-redux';
 
 interface AddressTableProps {
     coinAccount: CoinAccount;
+    makeRefetch: (addressIndex: number) => ()=>void;
 }
 
 const formatBalance = (balance: number) => {
@@ -28,7 +29,7 @@ export const AddressTable = (props: AddressTableProps) => {
             </TableThead>
             <TableTbody>
                 {props.coinAccount.derivedAddresses.map((info, index) => (
-                    <AddressRow address={info} symbol={props.coinAccount.chain} key={index}/>
+                    <AddressRow address={info} symbol={props.coinAccount.chain} key={index} refetch={props.makeRefetch(index)}/>
                 ))}
             </TableTbody>
         </Table>
@@ -58,8 +59,7 @@ const queryFromSymbol = (symbol: string) => {
     }
 }
 
-const AddressRow = (props: {address: AddressWithBalance, symbol: string}) => {
-    const  { data, refetch } = queryFromSymbol(props.symbol)(props.address.address);
+const AddressRow = (props: {address: AddressWithBalance, symbol: string, refetch: ()=>void}) => {
     return (
                     <TableTr key={props.address.index}>
                         <TableTd>{props.address.index}</TableTd>
@@ -69,9 +69,9 @@ const AddressRow = (props: {address: AddressWithBalance, symbol: string}) => {
                             </Text>
                         </TableTd>
                         <TableTd>
-                            {formatBalance(data ?? props.address.balance)} {props.symbol}
+                            {formatBalance(props.address.balance)} {props.symbol}
                             <ActionIconGroup className='inline'>
-                                <ActionIcon onClick={() => refetch()}><IoRefresh/></ActionIcon>
+                                <ActionIcon onClick={() => props.refetch()}><IoRefresh/></ActionIcon>
                             </ActionIconGroup>
                             </TableTd>
                     </TableTr>

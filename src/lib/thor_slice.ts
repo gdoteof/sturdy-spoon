@@ -16,6 +16,7 @@ import { register9Rheader, assetFromStringEx } from '@xchainjs/xchain-util'
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { Client } from "@xchainjs/xchain-thorchain";
 import { walletSlice } from '@/lib/wallet_slice';
+import { CheckBalanceParams, CheckBalanceResponse } from '@/lib/btc_slice';
 
 register9Rheader(axios)
 register9Rheader(cosmosclient.config.globalAxios)
@@ -65,11 +66,15 @@ export const thorApi = createApi({
     reducerPath: 'thorApi',
     baseQuery: fakeBaseQuery(),
     endpoints: (builder) => ({
-        checkBalance: builder.query<number, string>({
-            queryFn: async (address) => {
+        checkBalance: builder.query<CheckBalanceResponse, CheckBalanceParams>({
+            queryFn: async (checkBalanceParams) => {
+                const { fingerprint, derivationPath, accountIndex, addressIndex, address } = checkBalanceParams
                 const balance = await getThorBalance(address)
                 return {
-                    data: balance
+                    data: {
+                        balance,
+                        checkBalanceParams
+                    }
                 }
             },
         }),
@@ -116,10 +121,9 @@ export const thorApi = createApi({
 }).enhanceEndpoints({
     endpoints: {
         checkBalance: {
-            onCacheEntryAdded: async (address: string, api) => {
+            onCacheEntryAdded: async (_checkBalanceParams, api) => {
                 const { data } = await api.cacheDataLoaded;
-                const balance = data;
-                api.dispatch(walletSlice.actions.setBalanceForAddress({ address, balance }));
+                api.dispatch(walletSlice.actions.setBalanceForAddress(data));
             }
         },
 

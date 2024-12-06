@@ -1,5 +1,5 @@
 
-import { btcAPI } from "@/lib/btc_slice";
+import { btcAPI, CheckBalanceParams, CheckBalanceResponse } from "@/lib/btc_slice";
 import { AddressWithBalance, KeystoneAccount, keystoneApi, KeystoneMultiAccount } from "@/lib/keystone_api";
 import { PayloadAction, createSlice } from "@reduxjs/toolkit";
 
@@ -88,14 +88,14 @@ export const walletSlice = createSlice({
         setScanProgress: (state, action: PayloadAction<number>) => {
             state.scanProgress = action.payload;
         },
-        setBalanceForAddress: (state, action: PayloadAction<{ address: string, balance: number }>) => {
+        setBalanceForAddress: (state, action: PayloadAction<CheckBalanceResponse>) => {
             const activeWallet = state.wallets[state.activeWallet ?? ""];
             if (!activeWallet) {
                 return;
             }
             const coinAccounts = activeWallet.coinAccounts;
             coinAccounts.forEach((account) => {
-                const address = account.derivedAddresses.find((address) => address.address === action.payload.address);
+                const address = account.derivedAddresses.find((address) => address.address === action.payload.checkBalanceParams.address);
                 if (address) {
                     address.balance = action.payload.balance;
                     return;
@@ -129,28 +129,29 @@ export const walletSlice = createSlice({
             return state;
         });
         builder.addMatcher(btcAPI.endpoints.checkBalance.matchFulfilled, (state, action) => {
-            const balance = action.payload;
-            const originalAddress = action.meta.arg.originalArgs;
-            console.log(`Balance for address ${originalAddress} is ${action.payload}`);
-            const activeWallet = state.wallets[state.activeWallet ?? ""];
-            if (!activeWallet) {
-                return;
+            const checkBalanceResponse = action.payload;
+            const checkBalanceRequest: CheckBalanceParams = action.payload.checkBalanceParams;
+            const wallet = state.wallets[checkBalanceRequest.fingerprint];
+            if (!wallet) {
+                throw new Error(`Wallet not found for ${checkBalanceRequest.fingerprint}`);
             }
-            const coinAccounts = activeWallet.coinAccounts;
-            console.log(`Original Address: ${originalAddress}`);
-            console.log(`Number of coin accounts: ${coinAccounts.length}`);
-            coinAccounts.forEach((account, accountIndex) => {
-                console.log(`Account: ${account.chain}`);
-                console.log(`Number of addresses: ${account.derivedAddresses.length}`);
-                const addressIndex = account.derivedAddresses.findIndex((address) => address.address === originalAddress);
-                if (addressIndex !== -1) {
-                    console.log(`Setting balance for address ${originalAddress} to ${balance}, inside BTC slice`);
-                    console.log(state.wallets[state.activeWallet ?? ""].coinAccounts[accountIndex].derivedAddresses[addressIndex]);
-                    state.wallets[state.activeWallet ?? ""].coinAccounts[accountIndex].derivedAddresses[addressIndex].balance = balance;
-                    return state;
+            const coinAccount = wallet.coinAccounts.find((account) => account.derivationPath === checkBalanceRequest.derivationPath);
+            if (coinAccount) {
+                const address = coinAccount.derivedAddresses.find((address) => address.index === checkBalanceRequest.addressIndex);
+                if (address) {
+                    address.balance = checkBalanceResponse.balance;
+                } else {
+                    // Insert new address
+                    coinAccount.derivedAddresses.push({
+                        address: checkBalanceRequest.address,
+                        balance: checkBalanceResponse.balance,
+                        index: checkBalanceRequest.addressIndex,
+                    });
                 }
-            });
-            return state;
+
+            } else {
+                throw new Error(`Coin account not found for ${checkBalanceRequest.derivationPath}`);
+            }
         }
         );
     },

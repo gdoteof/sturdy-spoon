@@ -52,18 +52,28 @@ export const getBtcBalance = async (address: string): Promise<number> => {
     }
 }
 
+export interface CheckBalanceParams {
+    fingerprint: string;
+    derivationPath: string;
+    accountIndex: number;
+    addressIndex: number;
+    address: string;
+}
+
+export interface CheckBalanceResponse {
+    balance: number;
+    checkBalanceParams: CheckBalanceParams;
+}
 
 export const btcAPI = createApi({
     reducerPath: 'btcAPI',
     baseQuery: fakeBaseQuery(),
     endpoints: (builder) => ({
-        checkBalance: builder.query<number, string>({
-            queryFn: async (address) => {
-                console.log(`Inside queryFN, Checking balance for ${address}`);
-                const balance = await getBtcBalance(address)
-                return {
-                    data: balance
-                }
+        checkBalance: builder.query<CheckBalanceResponse, CheckBalanceParams>({
+            queryFn: async (checkBalanceParams) => {
+                console.log(`Inside queryFN, Checking balance for ${checkBalanceParams.address}`);
+                const balance = await getBtcBalance(checkBalanceParams.address);
+                return { data: { balance, checkBalanceParams } };
             },
         }),
         checkPosition: builder.query<LiquidityPosition | null, CheckPositionParams>({
@@ -84,12 +94,13 @@ export const btcAPI = createApi({
 }).enhanceEndpoints({
     endpoints: {
         checkBalance: {
-            onCacheEntryAdded: async (account: string, api) => {
-                console.log(`In cache entry added for ${account}`);
+            onCacheEntryAdded: async (checkBalanceParams, api) => {
+                console.log(`In cache entry added for ${checkBalanceParams.address}`);
                 const { data } = await api.cacheDataLoaded;
-                const balance = data;
-                console.log(`Balance for address ${account} is ${balance}`);
-                api.dispatch(walletSlice.actions.setBalanceForAddress({ address: account, balance }));
+                const response = data;
+                const { balance } = response;
+                console.log(`Balance for address ${checkBalanceParams.address} is ${balance}`);
+                api.dispatch(walletSlice.actions.setBalanceForAddress(data));
             },
         },
     },
