@@ -30,6 +30,7 @@ export interface CoinAccount {
     derivedAddresses: AddressWithBalance[];
     index: number;
     derivationPath: string;
+    xpub: string;
 }
 export interface WalletState {
     wallets: Record<string, Wallet>;
@@ -73,6 +74,16 @@ export const walletSlice = createSlice({
                 state.activeWallet = action.payload.masterFingerprint;
             }
         },
+        forgetWallet: (state, action: PayloadAction<string>) => {
+            delete state.wallets[action.payload];
+            if (state.activeWallet === action.payload) {
+                state.activeWallet = null;
+            }
+        },
+        forgetAll: (state) => {
+            state.wallets = {};
+            state.activeWallet = null;
+        },
         setCoinAccounts: (state, action: PayloadAction<CoinAccount[]>) => {
             state.wallets[state.activeWallet!].coinAccounts = action.payload;
         },
@@ -108,10 +119,11 @@ export const walletSlice = createSlice({
             const incomingCoinAccounts: CoinAccount[] = action.payload.keys.map((key: KeystoneAccount, index: number) => {
                 return {
                     chain: key.chain as SwappableChain,
-                    symbol: key.name as SwappableSymbol,
+                    symbol: key.chain as SwappableSymbol,
                     balance: key.balance,
                     derivedAddresses: key.derivedAddresses,
                     derivationPath: key.path,
+                    xpub: key.extendedPublicKey ?? "",
                     index: 0,
                 };
             });

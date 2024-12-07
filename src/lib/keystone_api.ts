@@ -39,18 +39,20 @@ export const keystoneApi = createApi({
                     const ur = new UR(Buffer.from(cbor, 'hex'), type);
                     const accounts = sdk.parseMultiAccounts(ur);
                     const keystoneAccounts = accounts.keys.map((account, accountIndex) => {
+                        console.log(`Processing account ${account.name} for chain ${account.chain} index ${accountIndex}`);
                         const derivedAddresses: AddressWithBalance[] = [];
                         for (let i = 0; i < 10; i++) {
                             let address = '';
+                            console.log(`Processing address ${i}`);
                             switch (account.chain) {
-                                case 'bitcoin':
+                                case 'BTC':
                                     address = getBtcAddressFromKeyObj(account, i);
                                     break;
-                                case 'thorchain':
+                                case 'RUNE':
                                     address = getThorchainAddressFromKeyObj(account, i);
                                     break;
                                 default:
-                                    throw new Error(`Unsupported chain ${account.chain}`);
+                                    continue;
                             }
                             derivedAddresses.push({ address, index: i, balance: 0 });
                         }
@@ -61,49 +63,11 @@ export const keystoneApi = createApi({
 
                     return { data: keystoneMultiAccounts as KeystoneMultiAccount };
                 } catch (error) {
+                    console.error(`Failed to process Keystone scan: ${error}`);
                     return { error: { status: 'CUSTOM_ERROR', error: 'Failed to process Keystone scan', data: { message: 'Failed to process Keystone scan' } } };
                 }
             },
 
         })
     })
-}).enhanceEndpoints({
-    // Check balances for all derived addresses
-    endpoints: {
-        processKeystoneScan: {
-            onCacheEntryAdded: async (scanResult: ScanResult, api) => {
-                const { data } = await api.cacheDataLoaded;
-                const accounts = data?.keys;
-                for (const account of accounts) {
-                    const chain = account.chain;
-                    switch (chain) {
-                        case 'bitcoin':
-                            account.derivedAddresses.forEach(async (address) => {
-                                const checkBalanceParams: CheckBalanceParams = {
-                                    fingerprint: data.masterFingerprint,
-                                    derivationPath: account.path,
-                                    accountIndex: account.index,
-                                    addressIndex: address.index,
-                                    address: address.address
-                                };
-                                api.dispatch(btcAPI.endpoints.checkBalance.initiate(checkBalanceParams));
-                            });
-                            break;
-                        case 'thorchain':
-                            account.derivedAddresses.forEach(async (address) => {
-                                const checkBalanceParams: CheckBalanceParams = {
-                                    fingerprint: data.masterFingerprint,
-                                    derivationPath: account.path,
-                                    accountIndex: account.index,
-                                    addressIndex: address.index,
-                                    address: address.address
-                                };
-                                api.dispatch(thorApi.endpoints.checkBalance.initiate(checkBalanceParams));
-                            });
-                            break;
-                    }
-                }
-            }
-        }
-    }
-});
+})

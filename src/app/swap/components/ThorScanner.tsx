@@ -55,6 +55,7 @@ export const ThorScanner = () => {
                         () => {
                             dispatch(walletSlice.actions.setIsScanning(false));
                             dispatch(walletSlice.actions.setScanProgress(0));
+                            dispatch(walletSlice.actions.forgetAll());
                         }
                     }>Reset</Button>
                 </Group>

@@ -36,6 +36,8 @@ const persistConfig = {
     thorSlice.name,
     uiSlice.name,
     walletSlice.name,
+    btcAPI.reducerPath,
+    thorApi.reducerPath,
   ],
   blacklist: [
 
@@ -77,7 +79,7 @@ export const makeStore = () => {
         serializableCheck: {
           ignoredActions: ["persist/PERSIST", "persist/REHYDRATE"],
         },
-      }).concat(cetusApi.middleware, thorApi.middleware, keystoneApi.middleware),
+      }).concat(cetusApi.middleware, thorApi.middleware, keystoneApi.middleware, btcAPI.middleware),
     devTools: process.env.NODE_ENV !== 'production',
   })
   const persistor = persistStore(store);

@@ -5,7 +5,7 @@ import { createSlice } from "@reduxjs/toolkit";
 interface UIState {
     theme: "light" | "dark";
     menuOpen: boolean;
-    filters: {
+    poolFilters: {
         name: string;
         coinTypeA: string[];
         coinTypeB: string[];
@@ -13,13 +13,16 @@ interface UIState {
         isPause: boolean | null;
         liquidity: [number, number];
     };
+    walletFilters: {
+        enabled: string[];
+    };
     serverStoreBootstrapped: boolean;
 }
 
 const initialState: UIState = {
     theme: "dark",
     menuOpen: false,
-    filters: {
+    poolFilters: {
         name: "",
         coinTypeA: [],
         coinTypeB: [],
@@ -28,6 +31,9 @@ const initialState: UIState = {
         liquidity: [0, 0],
     },
     serverStoreBootstrapped: false,
+    walletFilters: {
+        enabled: ["BTC", "RUNE"],
+    }
 };
 
 
@@ -42,25 +48,32 @@ export const uiSlice = createSlice({
             state.menuOpen = !state.menuOpen;
         },
         setFeeRateFilter(state, action) {
-            state.filters.feeRate = action.payload;
+            state.poolFilters.feeRate = action.payload;
         },
         setCoinTypeAFilter(state, action) {
-            state.filters.coinTypeA = action.payload;
+            state.poolFilters.coinTypeA = action.payload;
         },
         setCoinTypeBFilter(state, action) {
-            state.filters.coinTypeB = action.payload;
+            state.poolFilters.coinTypeB = action.payload;
         },
         setNameFilter(state, action) {
-            state.filters.name = action.payload;
+            state.poolFilters.name = action.payload;
         },
         setServerBootstrapped(state) {
             state.serverStoreBootstrapped = true;
+        },
+        addWalletSymbol(state, action) {
+            state.walletFilters.enabled.push(action.payload)
+            state.walletFilters.enabled.filter((v: string, i: number, a: string[]) => a.indexOf(v) === i);
+        }, removeWalletSymbol(state, action) {
+            state.walletFilters.enabled = state.walletFilters.enabled.filter((symbol) => symbol !== action.payload);
         }
     },
     selectors: {
         getTheme: (state: UIState) => state.theme,
         getMenuOpen: (state: UIState) => state.menuOpen,
-        getFilters: (state: UIState) => state.filters,
+        getFilters: (state: UIState) => state.poolFilters,
         getServerStoreBootstrapped: (state: UIState) => state.serverStoreBootstrapped,
+        getWalletSymbols: (state: UIState) => state.walletFilters.enabled,
     }
 });

@@ -7,6 +7,8 @@ import {
     TxDetails,
     SwapEstimate,
     LiquidityPosition,
+    AddliquidityPosition,
+    EstimateAddLP,
 } from '@xchainjs/xchain-thorchain-query'
 import { createApi, fakeBaseQuery } from '@reduxjs/toolkit/query/react'
 
@@ -29,6 +31,7 @@ export interface CheckPositionParams {
     asset: Asset;
 }
 const thorClient = new Client({});
+
 export const getThorBalance = async (address: string): Promise<number> => {
     try {
         const balance = await thorClient.getBalance(address);
@@ -89,6 +92,18 @@ export const thorApi = createApi({
                     }
                 } catch (error) {
                     return { error: { status: 'CUSTOM_ERROR', error: 'Failed to fetch pools', data: { message: (error as Error).message } } }
+                }
+            },
+        }),
+        estimateAddLiquidity: builder.query<EstimateAddLP, AddliquidityPosition>({
+            queryFn: async (params) => {
+                try {
+                    const estimate = await thorchainQuery.estimateAddLP(params)
+                    return {
+                        data: estimate
+                    }
+                } catch (error) {
+                    return { error: { status: 'CUSTOM_ERROR', error: 'Failed to estimate add liquidity', data: { message: 'Failed to estimate add liquidity' } } }
                 }
             },
         }),
